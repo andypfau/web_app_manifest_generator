@@ -20,10 +20,15 @@ class WebAppManifest:
             description: str = None,
             display: str = 'browser',
             theme_color: str = None,
-            background_color: str = None):
+            background_color: str = None,
+            create_html_snippet: bool = True,
+            create_html_sample: bool = False):
 
         create_svg = WebAppManifest._create_icons(working_dir, icon_filename)
-        WebAppManifest._create_html_snippet(working_dir, server_dir, create_svg)
+        if create_html_snippet:
+            WebAppManifest._create_html_sample(working_dir, server_dir, create_svg, name, description, full_sample=False)
+        if create_html_sample:
+            WebAppManifest._create_html_sample(working_dir, server_dir, create_svg, name, description, full_sample=True)
         WebAppManifest._create_manifest(working_dir, server_dir, name, short_name,
             lang, start_url, description, display, theme_color, background_color)
 
@@ -56,16 +61,33 @@ class WebAppManifest:
     
 
     @staticmethod
-    def _create_html_snippet(working_dir: str, server_dir: str, save_svg: bool):
+    def _create_html_sample(working_dir: str, server_dir: str, save_svg: bool, name: str, description: str, full_sample: bool):
 
         html = ''
+        
+        if full_sample:
+            html += '<!DOCTYPE html>\n'
+            html += '<html lang="en">\n'
+            html += '<head>\n'
+            html += '<meta charset="utf-8" />\n'
+
         html += f'<link rel="icon" href="{server_dir}favicon.ico" sizes="any">\n'
         if save_svg:
             html += f'<link rel="icon" href="{server_dir}icon.svg" type="image/svg+xml">\n'
         html += f'<link rel="apple-touch-icon" href="{server_dir}apple-touch-icon.png">\n'
         html += f'<link rel="manifest" href="{server_dir}manifest.webmanifest">\n'
         
-        fn = working_dir+'snippet.htm'
+        if full_sample:
+            html += '</head><body>\n'
+            html += f'<h1>{name}</h1>\n'
+            html += f'<p>{description}</p>\n'
+            html += '</html>\n'
+        
+        if full_sample:
+            fn = working_dir+'sample.htm'
+        else:
+            fn = working_dir+'snippet.htm'
+        
         logging.info(f'Creating <{fn}>')
         with open(fn, 'w') as fp:
             fp.write(html)

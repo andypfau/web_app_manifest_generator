@@ -9,3 +9,8 @@ Automatically generates web app manifests, as well an HTML snipped and the recom
 
 - Python 3.10
 - Packet `cairosvg`
+
+
+## How To Use
+
+Check out `samples/demo.py`.
