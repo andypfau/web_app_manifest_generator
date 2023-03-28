@@ -21,7 +21,7 @@ if __name__ == '__main__':
         lang='EN-US',
         description='This is just a fabulous app',
         theme_color='#33aadd',
-        background_color='#222222',
+        background_color='#eeeeee',
         create_html_sample=True,
         create_html_snippet=True,
     )

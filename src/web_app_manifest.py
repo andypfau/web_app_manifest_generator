@@ -144,13 +144,17 @@ class WebAppManifest:
             html += '<html lang="en">\n'
             html += '<head>\n'
             html += '<meta charset="utf-8" />\n'
-            html += '<style type="text/css">*{\n'
+            html += '<style type="text/css">\n'
+            html += '*{\n'
             html += f'font-family:sans-serif;\n'
-            if self.theme_color is not None:
-                html += f'color:{self.theme_color};\n'
             if self.background_color is not None:
                 html += f'background-color:{self.background_color};\n'
-            html += '}</style>\n'
+            html += '}\n'
+            if self.theme_color is not None:
+                html += 'p{\n'
+                html += f'border: solid 1ex {self.theme_color}; padding: 1em;\n'
+                html += '}\n'
+            html += '</style>\n'
             html += f'<title>{self.name}</title>\n'
 
         html += f'<link rel="icon" href="{self.server_dir}favicon.ico" sizes="any">\n'
