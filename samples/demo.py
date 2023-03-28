@@ -1,25 +1,27 @@
-# fix Python paths
-import sys, os
-sys.path.append(os.path.abspath('.'))
-
 import shutil
+import sys
+import os
+
+sys.path.append(os.path.abspath('.'))
 from src import WebAppManifest
 
 
-# prepare file structure for this demo
-os.makedirs('./samples/output/', exist_ok=True)
-shutil.copy2('./samples/demo.svg', './samples/output/')
-shutil.copy2('./samples/demo.png', './samples/output/')
+if __name__ == '__main__':
+    WebAppManifest(
+        
+        # all generated files will be put here; the directory will be created automatically
+        output_dir='./samples/output/',
 
+        # this is our icon file; .svg is recommended, .png also works
+        icon_path='./samples/demo.svg',
 
-# create the actual web manifest
-WebAppManifest.create(
-    working_dir='./samples/output/',
-    icon_filename='demo.png',
-    name='My Faboulous App',
-    short_name='MFA',
-    lang='EN-US',
-    description='This is just a fabulous app',
-    theme_color='#00aeff',
-    background_color='#ffffff',
-    create_html_sample=True)
+        # parameters of the app
+        name='My Faboulous App',
+        short_name='MFA',
+        lang='EN-US',
+        description='This is just a fabulous app',
+        theme_color='#33aadd',
+        background_color='#222222',
+        create_html_sample=True,
+        create_html_snippet=True,
+    )

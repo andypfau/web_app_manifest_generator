@@ -5,13 +5,44 @@ import logging
 from PIL import Image
 
 
+def convert_png(input_path: str, output_path: str, size_px: int):
+
+    png = Image.open(input_path)
+    logging.info(f'Creating <{output_path}> ({size_px}<{size_px})')
+    png.resize((size_px, size_px)).save(output_path)
+
+
+def convert_svg(input_path: str, output_path: str, size_px: int):
+
+    ext = os.path.splitext(output_path)[1].lower()
+    from cairosvg import svg2png
+    with open(input_path, 'r') as fp:
+        svg = fp.read()
+    logging.info(f'Creating <{output_path}> ({size_px}<{size_px})')
+    if ext == '.png':
+        svg2png(bytestring=svg, write_to=output_path,
+                output_width=size_px, output_height=size_px)
+    elif ext == '.ico':
+        png_bin = svg2png(bytestring=svg,
+                            output_width=size_px, output_height=size_px)
+        png = Image.open(io.BytesIO(png_bin))
+        png.resize((size_px, size_px)).save(output_path)
+
+
+def open_file(path: str):
+    import subprocess, os, platform
+    if platform.system() == 'Windows':
+        os.startfile(path)
+    else: # Linux
+        subprocess.call(('xdg-open', path))
+
+
+
 class WebAppManifest:
 
-
-    @staticmethod
-    def create(
-            icon_filename: str,
-            working_dir: str = './',
+    def __init__(self,
+            icon_path: str,
+            output_dir: str = './',
             server_dir: str = './',
             name: str = None,
             short_name: str = None,
@@ -22,46 +53,89 @@ class WebAppManifest:
             theme_color: str = None,
             background_color: str = None,
             create_html_snippet: bool = True,
-            create_html_sample: bool = False):
+            create_html_sample: bool = False,
+            open_html_sample: bool = True):
+        """Create web manifest files. Just call the constructor to run.
 
-        create_svg = WebAppManifest._create_icons(working_dir, icon_filename)
+        Args:
+            icon_path (str): path to the icon file, can be .png or .svg
+            output_dir (str, optional): the directory where the files are created; the directory will be created automatically. Defaults to './'.
+            server_dir (str, optional): the intended directory on the server. Defaults to './'.
+            name (str, optional): full name of the app. Defaults to None.
+            short_name (str, optional): short name of the app. Defaults to None.
+            lang (str, optional): natural language of the app. Defaults to 'EN-US'.
+            start_url (str, optional): the home URL of the app. Defaults to None.
+            description (str, optional): a description for the app. Defaults to None.
+            display (str, optional): preferred display mode ('fullscreen', 'standalone', 'minimal-ui', 'browser'). Defaults to 'browser'.
+            theme_color (str, optional): CSS theme color. Defaults to None.
+            background_color (str, optional): CSS background color. Defaults to None.
+            create_html_snippet (bool, optional): whether to create a HTML snippet or not. Defaults to True.
+            create_html_sample (bool, optional): wheter to create a full HTML sample page or not. Defaults to False.
+
+        For more info, check <https://developer.mozilla.org/en-US/docs/Web/Manifest>.
+        """
+
+        self.icon_path = icon_path
+        self.output_dir = output_dir
+        self.server_dir = server_dir
+        self.name = name
+        self.short_name = short_name
+        self.lang = lang
+        self.start_url = start_url
+        self.description = description
+        self.display = display
+        self.theme_color = theme_color
+        self.background_color = background_color
+        
+        self.server_dir = self.server_dir.replace('\\', '/')
+        if not self.server_dir.endswith('/'):
+            self.server_dir += '/'
+
+        os.makedirs(output_dir, exist_ok=True)
+        have_svg = self._create_icons()
         if create_html_snippet:
-            WebAppManifest._create_html_sample(working_dir, server_dir, create_svg, name, description, full_sample=False)
+            self._create_html_sample(have_svg, full_sample=False)
         if create_html_sample:
-            WebAppManifest._create_html_sample(working_dir, server_dir, create_svg, name, description, full_sample=True)
-        WebAppManifest._create_manifest(working_dir, server_dir, name, short_name,
-            lang, start_url, description, display, theme_color, background_color)
+            self._create_html_sample(have_svg, full_sample=True)
+            if open_html_sample:
+                open_file(os.path.join(self.output_dir, 'sample.htm'))
+
+        self._create_manifest()
 
 
-    @staticmethod
-    def _create_icons(working_dir: str, icon_filename: str) -> bool:
+    def _create_icons(self) -> bool:
 
-        ext = os.path.splitext(icon_filename)[1].lower()
+        ext = os.path.splitext(self.icon_path)[1].lower()
         if ext == '.png':
             logging.debug('Using PNG converter')
-            convert = WebAppManifest._convert_png
-            save_svg = False
+            convert = convert_png
+            have_svg = False
         elif ext == '.svg':
             logging.debug('Using SVG converter')
-            convert = WebAppManifest._convert_svg
-            save_svg = True
+            convert = convert_svg
+            have_svg = True
         else:
             raise RuntimeError(f'Unsupported file extension for image: "{ext}"')
 
-        convert(working_dir+icon_filename, working_dir+'favicon.ico',  32)
-        convert(working_dir+icon_filename, working_dir+'apple-touch-icon.png', 180)
-        convert(working_dir+icon_filename, working_dir+'icon-192.png', 192)
-        convert(working_dir+icon_filename, working_dir+'icon-512.png', 512)
-        if save_svg:
-            fn = working_dir+icon_filename
-            logging.info(f'Creating <{fn}>')
-            shutil.copy(fn, working_dir+'icon.svg')
+        convert(self.icon_path, os.path.join(self.output_dir, 'favicon.ico'),  32)
+        convert(self.icon_path, os.path.join(self.output_dir, 'apple-touch-icon.png'), 180)
+        convert(self.icon_path, os.path.join(self.output_dir, 'icon-192.png'), 192)
+        convert(self.icon_path, os.path.join(self.output_dir, 'icon-512.png'), 512)
         
-        return save_svg
+        if have_svg:
+            svg_path = os.path.join(self.output_dir, 'icon.svg')
+            if os.path.isfile(svg_path):
+                logging.info(f'<{svg_path}> already exists, skipping')
+            else:
+                logging.info(f'Creating <{svg_path}>')
+                shutil.copy(self.icon_path, svg_path)
+        else:
+            logging.warn('No .svg-file provided, no vector graphics are used')
+        
+        return have_svg
     
 
-    @staticmethod
-    def _create_html_sample(working_dir: str, server_dir: str, save_svg: bool, name: str, description: str, full_sample: bool):
+    def _create_html_sample(self, have_svg: bool, full_sample: bool):
 
         html = ''
         
@@ -70,86 +144,66 @@ class WebAppManifest:
             html += '<html lang="en">\n'
             html += '<head>\n'
             html += '<meta charset="utf-8" />\n'
+            html += '<style type="text/css">*{\n'
+            html += f'font-family:sans-serif;\n'
+            if self.theme_color is not None:
+                html += f'color:{self.theme_color};\n'
+            if self.background_color is not None:
+                html += f'background-color:{self.background_color};\n'
+            html += '}</style>\n'
+            html += f'<title>{self.name}</title>\n'
 
-        html += f'<link rel="icon" href="{server_dir}favicon.ico" sizes="any">\n'
-        if save_svg:
-            html += f'<link rel="icon" href="{server_dir}icon.svg" type="image/svg+xml">\n'
-        html += f'<link rel="apple-touch-icon" href="{server_dir}apple-touch-icon.png">\n'
-        html += f'<link rel="manifest" href="{server_dir}manifest.webmanifest">\n'
+        html += f'<link rel="icon" href="{self.server_dir}favicon.ico" sizes="any">\n'
+        if have_svg:
+            html += f'<link rel="icon" href="{self.server_dir}icon.svg" type="image/svg+xml">\n'
+        html += f'<link rel="apple-touch-icon" href="{self.server_dir}apple-touch-icon.png">\n'
+        html += f'<link rel="manifest" href="{self.server_dir}manifest.webmanifest">\n'
         
         if full_sample:
             html += '</head><body>\n'
-            html += f'<h1>{name}</h1>\n'
-            html += f'<p>{description}</p>\n'
+            html += f'<h1>{self.name}</h1>\n'
+            html += f'<p>{self.description}</p>\n'
             html += '</html>\n'
         
         if full_sample:
-            fn = working_dir+'sample.htm'
+            filename = 'sample.htm'
         else:
-            fn = working_dir+'snippet.htm'
+            filename = 'snippet.htm'
+        output_path = os.path.join(self.output_dir, filename)
         
-        logging.info(f'Creating <{fn}>')
-        with open(fn, 'w') as fp:
+        logging.info(f'Creating <{output_path}>')
+        with open(output_path, 'w') as fp:
             fp.write(html)
 
 
-    @staticmethod
-    def _create_manifest(working_dir: str, server_dir: str, name: str, short_name: str, lang: str,
-            start_url: str, description: str, display: str, theme_color: str, background_color: str):
+    def _create_manifest(self):
         
         manifest = ''
         manifest += f'// manifest.webmanifest\n'
         manifest += '{\n'
-        if name is not None:
-            manifest += f'  "name": "{name}",\n'
-        if short_name is not None:
-            manifest += f'  "short_name": "{short_name}",\n'
-        if lang is not None:
-            manifest += f'  "lang": "{lang}",\n'
-        if start_url is not None:
-            manifest += f'  "start_url": "{start_url}",\n'
-        if description is not None:
-            manifest += f'  "description": "{description}",\n'
-        if display is not None:
-            manifest += f'  "display": "{display}",\n'
-        if theme_color is not None:
-            manifest += f'  "theme_color": "{theme_color}",\n'
-        if background_color is not None:
-            manifest += f'  "background_color": "{background_color}",\n'
+        if self.name is not None:
+            manifest += f'  "name": "{self.name}",\n'
+        if self.short_name is not None:
+            manifest += f'  "short_name": "{self.short_name}",\n'
+        if self.lang is not None:
+            manifest += f'  "lang": "{self.lang}",\n'
+        if self.start_url is not None:
+            manifest += f'  "start_url": "{self.start_url}",\n'
+        if self.description is not None:
+            manifest += f'  "description": "{self.description}",\n'
+        if self.display is not None:
+            manifest += f'  "display": "{self.display}",\n'
+        if self.theme_color is not None:
+            manifest += f'  "theme_color": "{self.theme_color}",\n'
+        if self.background_color is not None:
+            manifest += f'  "background_color": "{self.background_color}",\n'
         manifest += '  "icons": [\n'
-        manifest += '    { "src": "'+server_dir+'icon-192.png", "type": "image/png", "sizes": "192x192" },\n'
-        manifest += '    { "src": "'+server_dir+'icon-512.png", "type": "image/png", "sizes": "512x512" }\n'
+        manifest += '    { "src": "'+self.server_dir+'icon-192.png", "type": "image/png", "sizes": "192x192" },\n'
+        manifest += '    { "src": "'+self.server_dir+'icon-512.png", "type": "image/png", "sizes": "512x512" }\n'
         manifest += '  ]\n'
         manifest += '}\n'
         
-        fn = working_dir+'manifest.webmanifest'
-        logging.info(f'Creating <{fn}>')
-        with open(fn, 'w') as fp:
+        output_path = os.path.join(self.output_dir, 'manifest.webmanifest')
+        logging.info(f'Creating <{output_path}>')
+        with open(output_path, 'w') as fp:
             fp.write(manifest)
-
-
-
-    @staticmethod
-    def _convert_png(input_filename, output_filename, size):
-
-        png = Image.open(input_filename)
-        logging.info(f'Creating <{output_filename}> ({size}<{size})')
-        png.resize((size, size)).save(output_filename)
-
-
-    @staticmethod
-    def _convert_svg(input_filename, output_filename, size):
-
-        ext = os.path.splitext(output_filename)[1].lower()
-        from cairosvg import svg2png
-        with open(input_filename, 'r') as fp:
-            svg = fp.read()
-        logging.info(f'Creating <{output_filename}> ({size}<{size})')
-        if ext == '.png':
-            svg2png(bytestring=svg, write_to=output_filename,
-                    output_width=size, output_height=size)
-        elif ext == '.ico':
-            png_bin = svg2png(bytestring=svg,
-                             output_width=size, output_height=size)
-            png = Image.open(io.BytesIO(png_bin))
-            png.resize((size, size)).save(output_filename)

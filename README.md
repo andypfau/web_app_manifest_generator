@@ -11,6 +11,7 @@ Automatically generates web app manifests, as well an HTML snipped and the recom
 - Packet `cairosvg`
 
 
-## How To Use
+## How To
 
-Check out `samples/demo.py`.
+- Demo: run `python samples/demo.py`.
+- Unit tests:  `python test/test.py`.
