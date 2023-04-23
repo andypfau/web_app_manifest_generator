@@ -156,8 +156,12 @@ class WebAppManifest:
                 html += '}\n'
             html += '</style>\n'
             html += f'<title>{self.name}</title>\n'
+            html += '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n'
+            html += '<meta name="mobile-web-app-capable" content="yes">\n'
+            html += '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+            html += '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n'
 
-        html += f'<link rel="icon" href="{self.server_dir}favicon.ico" sizes="any">\n'
+        html += f'<link rel="icon" href="{self.server_dir}favicon.ico" type="image/x-icon">\n'
         if have_svg:
             html += f'<link rel="icon" href="{self.server_dir}icon.svg" type="image/svg+xml">\n'
         html += f'<link rel="apple-touch-icon" href="{self.server_dir}apple-touch-icon.png">\n'
@@ -183,7 +187,6 @@ class WebAppManifest:
     def _create_manifest(self):
         
         manifest = ''
-        manifest += f'// manifest.webmanifest\n'
         manifest += '{\n'
         if self.name is not None:
             manifest += f'  "name": "{self.name}",\n'
